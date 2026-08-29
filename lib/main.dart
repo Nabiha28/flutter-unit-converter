@@ -4,7 +4,7 @@ void main() {
   runApp(const UnitConverterApp());
 }
 
-/// The root widget of the Unit Converter application.
+/// Root widget for the Unit Converter application.
 class UnitConverterApp extends StatelessWidget {
   const UnitConverterApp({super.key});
 
@@ -22,7 +22,7 @@ class UnitConverterApp extends StatelessWidget {
   }
 }
 
-/// Displays the unit conversion interface and manages user input.
+/// Main page where users select a measurement type and perform conversions.
 class UnitConverterPage extends StatefulWidget {
   const UnitConverterPage({super.key});
 
@@ -33,22 +33,46 @@ class UnitConverterPage extends StatefulWidget {
 class _UnitConverterPageState extends State<UnitConverterPage> {
   final TextEditingController _valueController = TextEditingController();
 
+  String _category = 'Distance';
   String _fromUnit = 'Miles';
   String _toUnit = 'Kilometers';
   String _result = '';
 
-  final List<String> _units = [
-    'Miles',
-    'Kilometers',
-    'Feet',
-    'Meters',
-    'Pounds',
-    'Kilograms',
-    'Fahrenheit',
-    'Celsius',
-  ];
+  final Map<String, List<String>> _unitsByCategory = {
+    'Distance': [
+      'Miles',
+      'Kilometers',
+      'Feet',
+      'Meters',
+    ],
+    'Weight': [
+      'Pounds',
+      'Kilograms',
+    ],
+    'Temperature': [
+      'Fahrenheit',
+      'Celsius',
+    ],
+  };
 
-  /// Performs the selected unit conversion.
+  /// Returns the units available for the selected measurement category.
+  List<String> get _availableUnits => _unitsByCategory[_category]!;
+
+  /// Changes the measurement category and resets the selected units.
+  void _changeCategory(String? category) {
+    if (category == null) return;
+
+    setState(() {
+      _category = category;
+      _fromUnit = _availableUnits.first;
+      _toUnit = _availableUnits.length > 1
+          ? _availableUnits[1]
+          : _availableUnits.first;
+      _result = '';
+    });
+  }
+
+  /// Converts the entered value between the selected units.
   void _convert() {
     final input = double.tryParse(_valueController.text.trim());
 
@@ -59,13 +83,11 @@ class _UnitConverterPageState extends State<UnitConverterPage> {
       return;
     }
 
-    double convertedValue;
-
-    if (_fromUnit == _toUnit) {
-      convertedValue = input;
-    } else {
-      convertedValue = _convertValue(input, _fromUnit, _toUnit);
-    }
+    final convertedValue = _convertValue(
+      input,
+      _fromUnit,
+      _toUnit,
+    );
 
     setState(() {
       _result =
@@ -74,8 +96,12 @@ class _UnitConverterPageState extends State<UnitConverterPage> {
     });
   }
 
-  /// Returns the converted value based on the selected units.
+  /// Performs the mathematical conversion between two units.
   double _convertValue(double value, String from, String to) {
+    if (from == to) {
+      return value;
+    }
+
     // Distance conversions.
     if (from == 'Miles' && to == 'Kilometers') {
       return value * 1.60934;
@@ -109,7 +135,7 @@ class _UnitConverterPageState extends State<UnitConverterPage> {
     return value;
   }
 
-  /// Formats the number to make the result easier to read.
+  /// Formats numbers to two decimal places when necessary.
   String _formatNumber(double value) {
     if (value == value.roundToDouble()) {
       return value.toInt().toString();
@@ -118,10 +144,11 @@ class _UnitConverterPageState extends State<UnitConverterPage> {
     return value.toStringAsFixed(2);
   }
 
-  /// Clears the input and conversion result.
+  /// Clears the input and restores the default selections.
   void _reset() {
     setState(() {
       _valueController.clear();
+      _category = 'Distance';
       _fromUnit = 'Miles';
       _toUnit = 'Kilometers';
       _result = '';
@@ -138,25 +165,36 @@ class _UnitConverterPageState extends State<UnitConverterPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Unit Converter'),
+        title: const Text(
+          'Unit Converter',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
       ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 500),
+            constraints: const BoxConstraints(maxWidth: 520),
             child: Card(
+              elevation: 3,
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    const Icon(
+                      Icons.swap_vert,
+                      size: 50,
+                    ),
+
+                    const SizedBox(height: 10),
+
                     const Text(
-                      'Unit Converter',
+                      'Convert Measurements',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 28,
+                        fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -171,8 +209,28 @@ class _UnitConverterPageState extends State<UnitConverterPage> {
                       ),
                       decoration: const InputDecoration(
                         labelText: 'Enter value',
+                        hintText: 'Example: 5',
+                        prefixIcon: Icon(Icons.numbers),
                         border: OutlineInputBorder(),
                       ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    DropdownButtonFormField<String>(
+                      initialValue: _category,
+                      decoration: const InputDecoration(
+                        labelText: 'Measurement Type',
+                        prefixIcon: Icon(Icons.category),
+                        border: OutlineInputBorder(),
+                      ),
+                      items: _unitsByCategory.keys.map((category) {
+                        return DropdownMenuItem(
+                          value: category,
+                          child: Text(category),
+                        );
+                      }).toList(),
+                      onChanged: _changeCategory,
                     ),
 
                     const SizedBox(height: 20),
@@ -181,9 +239,10 @@ class _UnitConverterPageState extends State<UnitConverterPage> {
                       initialValue: _fromUnit,
                       decoration: const InputDecoration(
                         labelText: 'Convert From',
+                        prefixIcon: Icon(Icons.arrow_upward),
                         border: OutlineInputBorder(),
                       ),
-                      items: _units.map((unit) {
+                      items: _availableUnits.map((unit) {
                         return DropdownMenuItem(
                           value: unit,
                           child: Text(unit),
@@ -193,6 +252,7 @@ class _UnitConverterPageState extends State<UnitConverterPage> {
                         if (value != null) {
                           setState(() {
                             _fromUnit = value;
+                            _result = '';
                           });
                         }
                       },
@@ -204,9 +264,10 @@ class _UnitConverterPageState extends State<UnitConverterPage> {
                       initialValue: _toUnit,
                       decoration: const InputDecoration(
                         labelText: 'Convert To',
+                        prefixIcon: Icon(Icons.arrow_downward),
                         border: OutlineInputBorder(),
                       ),
-                      items: _units.map((unit) {
+                      items: _availableUnits.map((unit) {
                         return DropdownMenuItem(
                           value: unit,
                           child: Text(unit),
@@ -216,6 +277,7 @@ class _UnitConverterPageState extends State<UnitConverterPage> {
                         if (value != null) {
                           setState(() {
                             _toUnit = value;
+                            _result = '';
                           });
                         }
                       },
@@ -223,39 +285,54 @@ class _UnitConverterPageState extends State<UnitConverterPage> {
 
                     const SizedBox(height: 24),
 
-                    FilledButton(
+                    FilledButton.icon(
                       onPressed: _convert,
-                      child: const Padding(
+                      icon: const Icon(Icons.calculate),
+                      label: const Padding(
                         padding: EdgeInsets.all(12),
                         child: Text('Convert'),
                       ),
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
-                    OutlinedButton(
+                    OutlinedButton.icon(
                       onPressed: _reset,
-                      child: const Text('Reset'),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Reset'),
                     ),
 
-                    const SizedBox(height: 24),
+                    if (_result.isNotEmpty) ...[
+                      const SizedBox(height: 24),
 
-                    if (_result.isNotEmpty)
                       Container(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(),
                         ),
-                        child: Text(
-                          _result,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        child: Column(
+                          children: [
+                            const Text(
+                              'Conversion Result',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _result,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+                    ],
                   ],
                 ),
               ),
